@@ -31,14 +31,26 @@ class SleepTrackerViewModel(
         application: Application) : AndroidViewModel(application) {
 
     private var tonight = MutableLiveData<SleepNight?>()
+
+    private var _showSnackbarEvent = MutableLiveData<Boolean>()
+
+    val showSnackBarEvent: LiveData<Boolean>
+        get() = _showSnackbarEvent
+
+    fun doneShowingSnackbar() {
+        _showSnackbarEvent.value = false
+    }
+
     init {
         initializeTonight()
     }
+
     private fun initializeTonight() {
         viewModelScope.launch {
             tonight.value = getTonightFromDatabase()
         }
     }
+
     private suspend fun getTonightFromDatabase(): SleepNight? {
         var night = database.getTonight()
         if (night?.endTimeMilli != night?.startTimeMilli) {
@@ -64,6 +76,16 @@ class SleepTrackerViewModel(
         formatNights(nights, application.resources)
     }
 
+    val startButtonVisible = Transformations.map(tonight) {
+        it == null
+    }
+    val stopButtonVisible = Transformations.map(tonight) {
+        it != null
+    }
+    val clearButtonVisible = Transformations.map(nights) {
+        it?.isNotEmpty()
+    }
+
     fun onStopTracking() {
         viewModelScope.launch {
             val oldNight = tonight.value ?: return@launch
@@ -81,6 +103,7 @@ class SleepTrackerViewModel(
         viewModelScope.launch {
             clear()
             tonight.value = null
+            _showSnackbarEvent.value = true
         }
     }
 
